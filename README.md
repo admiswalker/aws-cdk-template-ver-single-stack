@@ -1,9 +1,14 @@
 # aws-cdk-template-ver-single-stack
 
-## SSH
+## 構成図
+
+![](architecture.drawio.png)
+
+## SSH アクセス
+
 ```bash
 EC2_INSTANCE_ID=$(aws ec2 describe-instances \
-    --filters "Name=tag:Name,Values=AwsCdkTemplate-Ec2Stack/AwsCdkTemplate-Ec2Stack-general_purpose_ec2" \
+    --filters "Name=tag:Name,Values=AwsCdkTemplate-AwsCdkTemplateStack/AwsCdkTemplate-AwsCdkTemplateStack-general_purpose_ec2" \
     --query "Reservations[].Instances[?State.Name=='running'].InstanceId[]" \
     --output text)
 ssh -i ~/.ssh/ec2/id_ed25519 admis@$EC2_INSTANCE_ID

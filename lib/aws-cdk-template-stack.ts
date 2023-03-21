@@ -15,13 +15,15 @@ export class AwsCdkTemplateStack extends cdk.Stack {
     super(scope, id, props);
 
     // VPC
+    const nat_instance = ec2.NatProvider.instance({
+      instanceType: new InstanceType('t3a.nano'),
+      machineImage: new NatInstanceImage(),
+      defaultAllowedTraffic: ec2.NatTrafficDirection.OUTBOUND_ONLY,
+    });
     const vpc = new ec2.Vpc(this, props.prj_name+'-'+this.constructor.name+'-vpc_for_ec2_and_ssm', {
       cidr: '10.0.0.0/16',
       natGateways: 1,
-      natGatewayProvider: ec2.NatProvider.instance({
-        instanceType: new InstanceType('t3a.nano'),
-        machineImage: new NatInstanceImage(),
-      }),
+      natGatewayProvider: nat_instance,
       subnetConfiguration: [
         {
           name: 'Public',
@@ -61,6 +63,12 @@ export class AwsCdkTemplateStack extends cdk.Stack {
     cloud_config.addCommands(user_data_script)
     const multipartUserData = new ec2.MultipartUserData();
     multipartUserData.addPart(ec2.MultipartBody.fromUserData(cloud_config, 'text/cloud-config; charset="utf8"'));
+
+    const ec2_sg = new ec2.SecurityGroup(this, 'Ec2Sg', {
+      allowAllOutbound: true,
+      securityGroupName: 'EC2 Sev Security Group',
+      vpc: vpc,
+    });
     
     const ec2_instance = new ec2.Instance(this, props.prj_name+'-'+this.constructor.name+'-general_purpose_ec2', {
       instanceType: new ec2.InstanceType('t3a.nano'), // 2 vCPU, 0.5 GB
@@ -81,7 +89,10 @@ export class AwsCdkTemplateStack extends cdk.Stack {
       }),
       role: ssm_iam_role,
       userData: multipartUserData,
+      securityGroup: ec2_sg,
     });
+
+    nat_instance.connections.allowFrom(ec2_sg, ec2.Port.allTraffic());
 
     //---
   }
